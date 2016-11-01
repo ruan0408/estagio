@@ -1,0 +1,214 @@
+# CREATE TABLE verao_2009_2014.turma_temp LIKE verao_2009_2014.turma;
+# INSERT verao_2009_2014.turma_temp SELECT * FROM verao_2009_2014.turma;
+
+# SELECT *
+# FROM verao_2009_2014.turma_temp
+# WHERE periodo_inicial LIKE '%-%';
+
+# SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ALLOW_INVALID_DATES';
+
+
+
+
+
+
+
+# TESTE DE "UNIDADE" NA TABELA PROFESSORES
+# ===================================================
+# SELECT *
+# FROM verao_2009_2014.professores
+# LEFT JOIN professor_map ON professor_id = old_id
+# WHERE new_id NOT IN (SELECT id FROM verao_to_do.turma);
+
+
+
+# TESTE DE "UNIDADE" NA TABELA TURMA
+# ===================================================
+# SELECT *
+# FROM verao_2009_2014.turma AS turma_old
+# LEFT JOIN turma_map ON id_antigo = turma_old.turma_id
+# WHERE id_novo NOT IN (SELECT id FROM verao_to_do.turma);
+
+
+
+# TESTE DE "UNIDADE" NA TABELA CURSO
+# ================================================
+# SELECT *
+# FROM verao_2009_2014.curso
+# WHERE codcurceu NOT IN (SELECT codigo_usp FROM verao_to_do.curso);
+
+
+
+# INSERÇÃO DAS TURMAS PASSADAS NA TABELA TURMA DO BANCO NOVO.
+# =======================================================================================
+# INSERT INTO verao_to_do.turma (id, programa_id, curso_id, codcurceu, codedicurceu, ordem_programa, sala, periodo_inicial, periodo_final, taxa, vagas, codigo, taxa_desconto, informacao_desconto, observacao)
+# SELECT turma_map.id_novo, id_prog, curso_map.id_novo, codcurceu,codedicurceu, ord_prog, sala,periodo_inicial, periodo_final, taxa, vagas, -1, cast(taxa_desc as DECIMAL(5,2)), taxa_obs, NULL
+# FROM verao_2009_2014.turma_temp
+# INNER JOIN verao_to_do.turma_map ON turma_temp.turma_id = turma_map.id_antigo
+# INNER JOIN verao_to_do.curso_map ON turma_temp.curso_id = curso_map.id_antigo;
+
+
+
+
+# TURMAS COM MULTIPLOS PROFESSORES. FORAM INSERIDAS MANUALMENTE NA TABELA professores_turma
+# ======================================================
+# SELECT *
+# FROM verao_2009_2014.professores
+# WHERE turma_id =  47   OR turma_id =  110 OR
+#       turma_id =  115  OR turma_id =  116 OR
+#       turma_id =  119  OR turma_id =  121 OR
+#       turma_id =  122  OR turma_id =  124 OR
+#       turma_id =  126;
+
+
+
+
+# INSERE NA TABELA professores_turma AS TURMAS DO BANCO ANTIGO E SEUS PROFESSORES,
+# JÁ COM O NOVO ID EM AMBOS OS CASOS.
+# ================================================================
+# INSERT INTO professores_turma (professor_id, turma_id)
+# SELECT professor_map.new_id, turma_map.id_novo
+# FROM verao_2009_2014.professores
+# INNER JOIN professor_map ON professor_id = professor_map.old_id
+# INNER JOIN turma_map ON turma_id = turma_map.id_antigo
+# WHERE turma_id !=  47   AND turma_id !=  110 AND
+#       turma_id !=  115  AND turma_id !=  116 AND
+#       turma_id !=  119  AND turma_id !=  121 AND
+#       turma_id !=  122  AND turma_id !=  124 AND
+#       turma_id !=  126;
+
+
+
+
+# CRIA MAPEAMENTO ENTRE PROFESSORES DO BANCO ANTIGO E DO BANCO NOVO
+# ======================================================
+# CREATE TABLE professor_map
+# SELECT prof_old.professor_id as old_id, achaMelhorNovoId(prof_old.professor_id) as new_id
+# FROM verao_2009_2014.professores as prof_old;
+
+
+
+# CRIA TABELA COM TODAS AS DISTANCIAS POSSIVEIS
+# =============================================================================
+# CREATE TABLE professor_distance
+# SELECT professor_old.professor_id as old_id, professor_old.curso_id as old_curso_id, professor_old.turma_id as old_turma_id, professor_old.nome as old_nome,
+#        professor_new.id as new_id, professor_new.nome as new_nome, verao_2009_2014.levenshtein(professor_old.nome, professor_new.nome) AS distancia
+# FROM verao_2009_2014.professores AS professor_old, verao_to_do.professor as professor_new;
+
+
+
+# FUNÇÃO QUE ACHA O MELHOR MATCH DO PROFESSOR ANTIGO NO BANCO NOVO
+# ==============================================================================
+# CREATE FUNCTION achaMelhorNovoId(meu_id INT) RETURNS INT DETERMINISTIC
+# BEGIN
+#   DECLARE novo_id DECIMAL(10,2);
+#   SET novo_id = 0;
+#
+#   SELECT professor_distance.new_id INTO novo_id
+#   FROM professor_distance
+#   WHERE old_id = meu_id AND
+#         distancia <= ALL (SELECT distancia FROM professor_distance WHERE professor_distance.old_id = meu_id)
+#   LIMIT 1;
+#
+#   RETURN novo_id;
+# END;
+
+
+
+# INSERÇÃO DAS TURMAS PASSADAS NA TABELA TURMA DO BANCO NOVO.
+# FALTA DECIDIR O QUE COLOCAR NA COLUNA 'codigo'.
+# ATUALIZAR curso_id PARA O NOVO ID, USANDO A TABELA DE MAPEAMENTO DE CURSOS
+# =======================================================================================
+# INSERT INTO verao_to_do.turma (id, programa_id, curso_id, codcurceu, codedicurceu, ordem_programa, sala, periodo_inicial, periodo_final, taxa, vagas, codigo, taxa_desconto, informacao_desconto, observacao)
+# SELECT id_novo, id_prog, curso_id, codcurceu,codedicurceu, ord_prog, sala, periodo_inicial, periodo_final, taxa, vagas, 0, taxa_desc, taxa_obs, NULL
+# FROM verao_2009_2014.turma_temp
+# INNER JOIN verao_to_do.turma_map ON id_antigo = turma_temp.turma_id;
+
+
+# CRIAÇÃO DA TABELA DE MAPEAMENTO DE IDs DAS TURMAS ANTIGAS PARA AS NOVAS
+# ==================================================
+# SET @novo_id := 67;
+# INSERT INTO verao_to_do.turma_map
+# SELECT turma_id, (@novo_id := @novo_id + 1)
+# FROM verao_2009_2014.turma;
+
+
+# INSERÇÃO DOS CURSOS QUE APENAS EXISTIAM NAS EDIÇÕES PASSADAS DO SISTEMA. ESSES CURSOS TEM id_novo >= 33
+# NA TABELA DE MAPEAMENTO DE IDS DE CURSOS
+# ===============================================================================================
+# INSERT INTO verao_to_do.curso (id, codigo_usp, nome, requisito, publico, carga_horaria, descricao, data_cadastro, data_ultima_alteracao)
+# SELECT curso_map.id_novo, codcurceu, nome, requisito, publico, carga_horaria, descricao, ifnull(STR_TO_DATE(datacad, '%d/%m/%Y'), current_date), dataalt
+# FROM verao_2009_2014.curso as curso_antigo
+#   INNER JOIN verao_to_do.curso_map as curso_map ON curso_antigo.curso_id = curso_map.id_antigo
+# WHERE curso_map.id_novo >= 33;
+
+
+# CRIAÇÃO DA TABELA DE MAPEAMENTO DE ID DO CURSO ANTIGO PARA O NOVO
+# ======================================================================
+# INSERT verao_to_do.curso_map
+# SELECT curso_id as antigo_id, id as novo_id
+# FROM verao_2009_2014.curso
+# INNER JOIN verao_to_do.curso ON codcurceu = codigo_usp;
+#
+# SET @novo_id := 32;
+# INSERT verao_to_do.curso_map
+# SELECT curso_id, (@novo_id := @novo_id + 1)
+# FROM verao_2009_2014.curso
+# WHERE NOT curso_id IN ( SELECT id_antigo FROM verao_to_do.curso_map);
+
+
+# CALCULA DISTANCIA DE EDIÇÃO DE DUAS STRINGS
+# ====================================================================
+# CREATE FUNCTION levenshtein( s1 VARCHAR(255), s2 VARCHAR(255) )
+#   RETURNS INT
+#   DETERMINISTIC
+#   BEGIN
+#     DECLARE s1_len, s2_len, i, j, c, c_temp, cost INT;
+#     DECLARE s1_char CHAR;
+#     -- max strlen=255
+#     DECLARE cv0, cv1 VARBINARY(256);
+#     SET s1_len = CHAR_LENGTH(s1), s2_len = CHAR_LENGTH(s2), cv1 = 0x00, j = 1, i = 1, c = 0;
+#     IF s1 = s2 THEN
+#       RETURN 0;
+#     ELSEIF s1_len = 0 THEN
+#       RETURN s2_len;
+#     ELSEIF s2_len = 0 THEN
+#       RETURN s1_len;
+#     ELSE
+#       WHILE j <= s2_len DO
+#         SET cv1 = CONCAT(cv1, UNHEX(HEX(j))), j = j + 1;
+#       END WHILE;
+#       WHILE i <= s1_len DO
+#         SET s1_char = SUBSTRING(s1, i, 1), c = i, cv0 = UNHEX(HEX(i)), j = 1;
+#         WHILE j <= s2_len DO
+#           SET c = c + 1;
+#           IF s1_char = SUBSTRING(s2, j, 1) THEN
+#             SET cost = 0; ELSE SET cost = 1;
+#           END IF;
+#           SET c_temp = CONV(HEX(SUBSTRING(cv1, j, 1)), 16, 10) + cost;
+#           IF c > c_temp THEN SET c = c_temp; END IF;
+#             SET c_temp = CONV(HEX(SUBSTRING(cv1, j+1, 1)), 16, 10) + 1;
+#             IF c > c_temp THEN
+#               SET c = c_temp;
+#             END IF;
+#             SET cv0 = CONCAT(cv0, UNHEX(HEX(c))), j = j + 1;
+#         END WHILE;
+#         SET cv1 = cv0, i = i + 1;
+#       END WHILE;
+#     END IF;
+#     RETURN c;
+#   END;
+#
+# CREATE FUNCTION levenshtein_ratio( s1 VARCHAR(255), s2 VARCHAR(255) )
+#   RETURNS INT
+#   DETERMINISTIC
+#   BEGIN
+#     DECLARE s1_len, s2_len, max_len INT;
+#     SET s1_len = LENGTH(s1), s2_len = LENGTH(s2);
+#     IF s1_len > s2_len THEN
+#       SET max_len = s1_len;
+#     ELSE
+#       SET max_len = s2_len;
+#     END IF;
+#     RETURN ROUND((1 - LEVENSHTEIN(s1, s2) / max_len) * 100);
+#   END;
