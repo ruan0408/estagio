@@ -4,3 +4,4 @@ certificados_verao/zip/
 certificados_verao/relacao_certificados/
 certificados_verao/conteudo_emails/
 certificados_verao/*.csv
+certificados_verao/output.txt

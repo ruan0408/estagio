@@ -1,0 +1,10 @@
+# -o to print only the matched part
+# -P to use Perl regex
+# (?= ...) is a lookbehind. The match is the part before that.
+# Matches anything like (Ruan_Costa)_524532.pdf
+# ===========================================================
+ls certificados/ | grep -oP '.*(?=_\d+?.pdf)' > allNames.csv
+
+# Replace underscore '_' with space ' ' globally.
+# ===============================================
+sed 's/_/\ /g' allNamesRaw.csv > allNames.csv 

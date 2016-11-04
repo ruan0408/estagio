@@ -64,7 +64,36 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES'
 # ALTER TABLE verao_to_do.estado ENGINE=INNODB;
 
 
+# QUANDO QUISER MUDAR COLUNAS (MODIFY) MAS DER ERRO DE FOREIGN KEY CONSTRAINT, USE ISSO:
+# LEMBRANDO QUE AS COLUNAS FOREIGN KEY PRECISAM SER IGUAIS.
+# ==================================================================================
+# SET FOREIGN_KEY_CHECKS = 0;
+# -- do your shit --
+# SET FOREIGN_KEY_CHECKS = 1;
 
+
+
+
+
+
+
+# EXEMPLO DE COMO CRIAR UMA VIEW
+# =============================================
+# CREATE VIEW aluno_usuario AS
+#   SELECT verao.aluno.*, cep, data_de_cadastro
+#   FROM verao.aluno
+#       INNER JOIN verao.endereco_aluno ON aluno.endereco_id = endereco_aluno.id
+#       INNER JOIN verao.usuario ON aluno.usuario_id = usuario.id;
+
+
+# EXEMPLO DE USO DE CASE NUM UPDATE
+# ==============================================
+# UPDATE aluno_temp
+# INNER JOIN aluno_2009_2014_sem_repeticao ON id = codpesceu
+#      SET data_validade_documento = CASE  WHEN dtafimvalidf REGEXP '[0-9]{4}.[0-9]{2}.[0-9]{2}' THEN DATE_FORMAT(STR_TO_DATE(dtafimvalidf, '%Y.%m.%d'), '%Y-%m-%d')
+#                                          WHEN dtafimvalidf REGEXP '[0-9]{2}.[0-9]{2}.[0-9]{4}' THEN DATE_FORMAT(STR_TO_DATE(dtafimvalidf, '%d/%m/%Y'), '%Y-%m-%d')
+#                                          ELSE NULL
+#                                    END;
 
 
 

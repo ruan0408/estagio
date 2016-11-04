@@ -31,10 +31,9 @@ foreach ($tuples as $tuple) {
 
 
 
-$handle = fopen("/home/webmaster/Downloads/certificados_verao/allStudentsData.csv", "r");
+$handle = fopen("allStudentsData.csv", "r");
 while (($line = fgets($handle)) !== false) {
     $data = explode(',', $line);
-//    if ($data[3] == "Alice Sumire Doi") var_dump($data);
 
     $name = str_replace('"', '', $data[3]);
     $cpf = str_replace(['-', '.'], '', $data[4]);
@@ -44,13 +43,12 @@ while (($line = fgets($handle)) !== false) {
 }
 
 
-$handle = fopen("/home/webmaster/Downloads/certificados_verao/allCertificates.csv", "r");
+$handle = fopen("allCertificates.csv", "r");
 while (($line = fgets($handle)) !== false)
     $certificates[] = trim($line);
 
 fclose($handle);
 
-//var_dump($name_email_db);
 
 
 foreach ($student_data as $data) {
@@ -67,8 +65,6 @@ foreach ($student_data as $data) {
         $name_email[$name] = $cpf_email_db[$cpf];
     elseif ($name != '' and key_exists($name, $name_email_db))
         $name_email[$name] = $name_email_db[$name];
-    else
-        echo "Probleeeeeeeeeeeeeeeeeeeeeeeeem " . $name . PHP_EOL;
 }
 
 
@@ -80,7 +76,6 @@ foreach ($name_email as $name => $email) {
 
 $name_email = $aux;
 
-//var_dump($aux);
 
 foreach ($certificates as $pdf_name) {
     $string_parts = explode('_', $pdf_name);
@@ -91,12 +86,39 @@ foreach ($certificates as $pdf_name) {
         $email = $name_email[$student_name];
     elseif ($student_name == 'RYAN MARCAL SALDANHA MAGA├▒A MARTINEZ')
         $email = 'marte1992@live.com';
-    else {
-        echo $student_name . PHP_EOL;
+    else
         continue;
-    }
 
     $txt_name = explode('.', $pdf_name)[0] . '.txt';
-    echo "mutt -s \"Verao IME-USP: sobre a emissao dos certificados do Verao 2016\"
-    $email -b leo@ime.usp.br -a certificados/$pdf_name < conteudo_emails/$txt_name" . PHP_EOL;
+
+//    echo "mutt -s \"Verao IME-USP: sobre a emissao dos certificados do Verao 2016\"
+//    $email -b leo@ime.usp.br -a certificados/$pdf_name < conteudo_emails/$txt_name" . PHP_EOL;
+}
+
+preencheConteudoEmails();
+
+function preencheConteudoEmails() {
+
+    $dir = new DirectoryIterator(dirname('conteudo_emails/.'));
+    foreach ($dir as $fileinfo) {
+        if (!$fileinfo->isDot()) {
+            $string_parts = explode('_', $fileinfo->getFilename());
+            array_pop($string_parts);
+            $name = implode(' ', $string_parts);
+
+            $message =  "Caro $name.
+Agradecemos sua participacão no 45o. programa de Verão do IME-USP.
+Em anexo, enviamos um PDF com o certificado de sua participacão.
+            
+Atenciosamente,
+Comissão dos Cursos de Verão do IME-USP
+http://www.ime.usp.br/verao";
+
+
+            $file = fopen('conteudo_emails/' . $fileinfo->getFilename(), "w");
+
+            fwrite($file, $message);
+            fclose($file);
+        }
+    }
 }
